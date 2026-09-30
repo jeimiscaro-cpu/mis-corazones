@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>💖 Corazones Flotantes Rojos y Púrpuras 💜</title>
+<style>
+  /* Fondo oscuro morado para que resalten */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f0519;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    height: 100vh;
+  }
+  canvas { display: block; }
+  /* Texto flotante arriba */
+  .titulo {
+    position: fixed;
+    top: 20px; width: 100%;
+    text-align: center;
+    color: white;
+    font-size: 28px;
+    text-shadow: 0 0 15px #ff0066, 0 0 30px #9900ff;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .subtitulo {
+    position: fixed;
+    bottom: 20px; width: 100%;
+    text-align: center;
+    color: #c9a0ff;
+    font-size: 15px;
+    pointer-events: none;
+    z-index: 10;
+  }
+  /* Botón para agregar corazones */
+  #btn {
+    position: fixed;
+    bottom: 55px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(45deg, #ff0033, #9900ff);
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    font-size: 16px;
+    border-radius: 30px;
+    cursor: pointer;
+    z-index: 11;
+    box-shadow: 0 0 20px #ff006688;
+  }
+  #btn:hover { transform: translateX(-50%) scale(1.08); }
+</style>
+</head>
+<body>
+
+<div class="titulo">💖 Corazones Flotantes 💜</div>
+<button id="btn">💘 ¡Más corazones!</button>
+<div class="subtitulo">Haz clic en la pantalla para crear corazones • Solo rojo y púrpura</div>
+<canvas id="lienzo"></canvas>
+
+<script>
+// ============================================================
+// CLASE: Corazon (igual que en C#, pero en JavaScript)
+// ============================================================
+class Corazon {
+  constructor(x, y) {
+    this.baseX = x;
+    this.x = x;
+    this.y = y;
+
+    // Velocidad hacia arriba: 1 a 3 px por frame
+    this.velocidadY = 1 + Math.random() * 2;
+
+    // Tamaño: 12 a 30 px
+    this.tamano = 12 + Math.random() * 18;
+
+    // Vaivén lateral (ola con seno)
+    this.amplitud = 10 + Math.random() * 25;
+    this.frecuencia = 0.02 + Math.random() * 0.03;
+    this.tiempo = Math.random() * 100;
+
+    // Velocidad del latido
+    this.velLatido = 0.08 + Math.random() * 0.08;
+
+    // COLOR: solo rojos y púrpuras
+    const rojos = ["#ff0000", "#dc143c", "#ff4646"];
+    const purpuras = ["#800080", "#9370db", "#8a2be2", "#da70d6"];
+    if (Math.random() < 0.5) {
+      this.color = rojos[Math.floor(Math.random() * rojos.length)];
+    } else {
+      this.color = purpuras[Math.floor(Math.random() * purpuras.length)];
+    }
+  }
+
+  actualizar() {
+    this.y -= this.velocidadY;
+    this.tiempo += 1;
+    this.x = this.baseX + Math.sin(this.tiempo * this.frecuencia * 10) * this.amplitud;
+  }
+
+  // Tamaño con latido: palpita ±10%
+  tamanoActual() {
+    return this.tamano * (1 + 0.1 * Math.sin(this.tiempo * this.velLatido * 10));
+  }
+
+  estaFuera() {
+    return this.y < -40;
+  }
+}
+
+// ============================================================
+// SISTEMA: maneja todos los corazones
+// ============================================================
+const canvas = document.getElementById("lienzo");
+const ctx = canvas.getContext("2d");
+let corazones = [];
+
+function redimensionar() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", redimensionar);
+redimensionar();
+
+// Crear 40 iniciales
+for (let i = 0; i < 40; i++) {
+  corazones.push(new Corazon(Math.random() * canvas.width, Math.random() * canvas.height));
+}
+
+// Dibuja UN corazón con curvas Bézier (igual que en WinForms con FillPath)
+function dibujarCorazon(c) {
+  const s = c.tamanoActual();
+  const x = c.x, y = c.y;
+
+  ctx.fillStyle = c.color;
+  ctx.beginPath();
+  // Lóbulo izquierdo
+  ctx.moveTo(x, y + s * 0.35);
+  ctx.bezierCurveTo(x - s * 0.5, y - s * 0.3, x - s, y + s * 0.25, x, y + s);
+  // Lóbulo derecho
+  ctx.bezierCurveTo(x + s, y + s * 0.25, x + s * 0.5, y - s * 0.3, x, y + s * 0.35);
+  ctx.fill();
+
+  // Brillito blanco 3D
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.beginPath();
+  ctx.arc(x - s * 0.35, y - s * 0.05, s * 0.14, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Bucle de animación (~60 FPS)
+function animar() {
+  // Fondo con estela suave
+  ctx.fillStyle = "#0f0519";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (const c of corazones) {
+    c.actualizar();
+    dibujarCorazon(c);
+  }
+  // Borra los que salieron y crea nuevos abajo
+  corazones = corazones.filter(c => !c.estaFuera());
+  while (corazones.length < 40) {
+    corazones.push(new Corazon(Math.random() * canvas.width, canvas.height + 20));
+  }
+
+  requestAnimationFrame(animar);
+}
+animar();
+
+// Interacción: clic crea corazón, botón agrega 10
+canvas.addEventListener("click", (e) => {
+  for (let i = 0; i < 5; i++)
+    corazones.push(new Corazon(e.clientX + (Math.random()*40-20), e.clientY));
+});
+document.getElementById("btn").addEventListener("click", () => {
+  for (let i = 0; i < 10; i++)
+    corazones.push(new Corazon(Math.random() * canvas.width, canvas.height + 20));
+});
+</script>
+</body>
+</html>
